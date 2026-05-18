@@ -868,8 +868,8 @@ spec:
     - source:
         principals:
         - "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"
-      requestPrincipals:
-      - "lab@istio.local/*"
+        requestPrincipals:
+        - "lab@istio.local/*"
     when:
     - key: request.auth.claims[scope]
       values:
