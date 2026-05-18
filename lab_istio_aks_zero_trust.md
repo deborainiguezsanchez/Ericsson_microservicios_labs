@@ -380,6 +380,10 @@ Resultado esperado:
 ```text
 200
 ```
+Review: Si aparece el error 500:
+
+kubectl rollout restart deployment azure-vote-front
+kubectl rollout restart deployment azure-vote-back
 
 **Mensaje para explicar en clase:**
 
