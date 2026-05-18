@@ -420,7 +420,7 @@ kubectl apply -f mtls-strict.yaml
 ### 9.2 Validar estado de mTLS
 
 ```bash
-istioctl authn tls-check
+istioctl x describe pod $FRONT_POD
 ```
 
 Si el comando no muestra suficiente detalle, validar con:
