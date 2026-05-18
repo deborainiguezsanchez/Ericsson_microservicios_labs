@@ -282,6 +282,7 @@ Validar nombres de contenedores:
 ```bash
 FRONT_POD=$(kubectl get pod -l app=azure-vote-front -o jsonpath='{.items[0].metadata.name}')
 kubectl get pod $FRONT_POD -o jsonpath='{.spec.containers[*].name}'
+Review: kubectl get pod $FRONT_POD -o jsonpath='{.spec.initContainers[*].name} {.spec.containers[*].name}'; echo
 echo
 ```
 
