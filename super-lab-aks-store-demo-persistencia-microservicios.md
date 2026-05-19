@@ -331,16 +331,10 @@ Mensaje clave:
 
 # 3. Event-driven con RabbitMQ
 
-## 3.1 Acceder a RabbitMQ Management UI
+## 3.1 Acceder a RabbitMQ Management UI (ACCEDER A TRAVÉS DE LA IP PÚBLICA) 
 
 ```bash
-kubectl port-forward svc/rabbitmq 15672:15672 -n $NS
-```
-
-Abrir:
-
-```text
-http://localhost:15672
+kubectl patch svc rabbitmq -n aks-store-state-lab -p '{"spec":{"type":"LoadBalancer"}}'
 ```
 
 Credenciales del manifiesto:
