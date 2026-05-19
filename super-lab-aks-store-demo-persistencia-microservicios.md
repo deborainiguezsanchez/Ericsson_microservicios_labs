@@ -279,7 +279,7 @@ Explicar:
 
 ---
 
-## 2.3 Acceder a store-front
+## 2.3 Acceder a store-front (SE PUEDE ACCEDER A TRAVÉS DE IP PÚBLICA)
 
 En una terminal:
 
@@ -297,7 +297,7 @@ En Cloud Shell, usar **Web Preview** sobre el puerto `8080`.
 
 ---
 
-## 2.4 Acceder a store-admin
+## 2.4 Acceder a store-admin (SE PUEDE ACCEDER A TRAVÉS DE IP PÚBLICA)
 
 En otra terminal:
 
