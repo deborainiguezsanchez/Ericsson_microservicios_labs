@@ -487,7 +487,7 @@ Respuesta:
 
 - Favorece disponibilidad
 - Acepta inconsistencia temporal
-- Es un enfoque más cercano a AP
+- Es un enfoque más cercano a AP - “AP” viene del teorema CAP y significa Availability + Partition Tolerance. En este enfoque, el sistema prioriza seguir funcionando y responder peticiones incluso si algunos componentes están caídos o desincronizados temporalmente. En el laboratorio, aunque un consumidor o microservicio falle, el resto del sistema continúa operando y los mensajes pueden procesarse después, aceptando consistencia eventual en lugar de detener toda la plataforma.
 - No bloquea todo el sistema por caída de un consumidor
 
 ---
