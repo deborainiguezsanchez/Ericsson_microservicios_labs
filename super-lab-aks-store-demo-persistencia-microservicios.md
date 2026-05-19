@@ -174,7 +174,7 @@ curl -L \
 
 ---
 
-## 1.2 Evitar LoadBalancers públicos para el laboratorio
+## 1.2 Evitar LoadBalancers públicos para el laboratorio (NO HACER ESTO)
 
 El manifiesto original expone `store-front` y `store-admin` como `LoadBalancer`.
 
