@@ -886,7 +886,7 @@ kubectl set env deployment/order-service -n $NS \
   OTEL_TRACES_EXPORTER=otlp \
   OTEL_METRICS_EXPORTER=otlp \
   OTEL_PROPAGATORS=tracecontext,baggage \
-  OTEL_RESOURCE_ATTRIBUTES=deployment.environment=lab,service.namespace=aks-store
+  OTEL_RESOURCE_ATTRIBUTES=deployment.environment=lab,service.namespace=default
 ```
 
 Repetir para otros servicios, ajustando `OTEL_SERVICE_NAME`:
