@@ -899,6 +899,189 @@ kubectl set env deployment/makeline-service -n $NS OTEL_SERVICE_NAME=makeline-se
 
 > **Nota importante:** Estas variables solo generan telemetry si la aplicación tiene OpenTelemetry SDK, auto-instrumentation o agente compatible. Si la imagen no está instrumentada, no aparecerán spans de aplicación solo por agregar variables.
 
+POSIBLE SOLUCIÓN
+
+Sí. Lo que debes hacer ahora es agregar **auto-instrumentación real** con **OpenTelemetry Operator**. Sin eso, Jaeger solo puede mostrar lo que recibe de Istio/Envoy o del propio Jaeger, pero no spans internos de la aplicación. El Operator soporta auto-instrumentación para Java, .NET, Node.js, Python y Go; además requiere `cert-manager` para funcionar correctamente en Kubernetes. ([OpenTelemetry][1])
+
+Hazlo así, paso a paso.
+
+## 1. Verifica qué tecnología usa cada deployment
+
+Primero mira las imágenes:
+
+```bash
+kubectl get deploy -n default -o wide
+```
+
+Luego revisa cada imagen:
+
+```bash
+kubectl get deploy -n default -o jsonpath='{range .items[*]}{.metadata.name}{" -> "}{.spec.template.spec.containers[0].image}{"\n"}{end}'
+```
+
+Necesitamos saber si son **Node.js, Java, Python, .NET o Go**, porque la anotación cambia.
+
+## 2. Instala cert-manager
+
+```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+```
+
+Espera a que esté listo:
+
+```bash
+kubectl get pods -n cert-manager
+```
+
+Todos deben quedar en `Running`.
+
+## 3. Instala OpenTelemetry Operator
+
+```bash
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml
+```
+
+Valida:
+
+```bash
+kubectl get pods -n opentelemetry-operator-system
+kubectl get crd | grep opentelemetry
+```
+
+## 4. Crea el recurso Instrumentation en namespace default
+
+Como tus apps están en `default`, créalo ahí:
+
+```bash
+cat <<EOF > otel-instrumentation.yaml
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: aks-demo-instrumentation
+  namespace: default
+spec:
+  exporter:
+    endpoint: http://otel-collector.observability-tracing.svc.cluster.local:4318
+  propagators:
+    - tracecontext
+    - baggage
+  sampler:
+    type: parentbased_traceidratio
+    argument: "1"
+EOF
+```
+
+Aplica:
+
+```bash
+kubectl apply -f otel-instrumentation.yaml
+kubectl get instrumentation -n default
+```
+
+## 5. Anota los deployments según el lenguaje
+
+Si son **Node.js**:
+
+```bash
+kubectl annotate deployment store-front -n default instrumentation.opentelemetry.io/inject-nodejs="true" --overwrite
+kubectl annotate deployment order-service -n default instrumentation.opentelemetry.io/inject-nodejs="true" --overwrite
+kubectl annotate deployment product-service -n default instrumentation.opentelemetry.io/inject-nodejs="true" --overwrite
+kubectl annotate deployment makeline-service -n default instrumentation.opentelemetry.io/inject-nodejs="true" --overwrite
+```
+
+Si son **Java**:
+
+```bash
+kubectl annotate deployment order-service -n default instrumentation.opentelemetry.io/inject-java="true" --overwrite
+```
+
+Si son **Python**:
+
+```bash
+kubectl annotate deployment order-service -n default instrumentation.opentelemetry.io/inject-python="true" --overwrite
+```
+
+Si son **.NET**:
+
+```bash
+kubectl annotate deployment order-service -n default instrumentation.opentelemetry.io/inject-dotnet="true" --overwrite
+```
+
+Si no sabes el lenguaje, primero pásame la salida del comando del paso 1.
+
+## 6. Reinicia los deployments
+
+```bash
+kubectl rollout restart deployment -n default
+kubectl get pods -n default -w
+```
+
+## 7. Verifica que la auto-instrumentación se inyectó
+
+Ejecuta:
+
+```bash
+kubectl describe pod -n default <POD_NAME>
+```
+
+Busca cosas como:
+
+```text
+OTEL_
+opentelemetry
+JAVA_TOOL_OPTIONS
+NODE_OPTIONS
+```
+
+También puedes usar:
+
+```bash
+kubectl exec -it deploy/order-service -n default -- env | grep OTEL
+```
+
+## 8. Genera tráfico
+
+Si usas `store-front`:
+
+```bash
+export STORE_IP=$(kubectl get svc store-front -n default -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+for i in {1..100}; do
+  curl -s -o /dev/null http://$STORE_IP
+  sleep 1
+done
+```
+
+## 9. Revisa Jaeger
+
+Abre Jaeger y busca servicios como:
+
+```text
+store-front
+order-service
+product-service
+makeline-service
+```
+
+Si ahora aparecen, ya tienes auto-instrumentación real.
+
+Si solo aparece `jaeger-all-in-one`, entonces revisa:
+
+```bash
+kubectl logs deploy/otel-collector -n observability-tracing --tail=100
+kubectl logs deploy/jaeger -n observability-tracing --tail=100
+kubectl describe pod -n default <POD_NAME>
+```
+
+El siguiente paso es que me pegues la salida de:
+
+```bash
+kubectl get deploy -n default -o jsonpath='{range .items[*]}{.metadata.name}{" -> "}{.spec.template.spec.containers[0].image}{"\n"}{end}'
+```
+
+[1]: https://opentelemetry.io/docs/platforms/kubernetes/operator/automatic/?utm_source=chatgpt.com "Injecting Auto-instrumentation"
+
+
 ---
 
 ## 21. Diseño recomendado para instrumentación real
