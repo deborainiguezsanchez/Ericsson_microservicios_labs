@@ -482,7 +482,7 @@ Check one deployment:
 
 ```bash
 kubectl get pod -n $APP_NS -l app=store-front \
-  -o jsonpath='{.items[0].spec.initcontainers[*].name}'
+  -o jsonpath='{.items[0].spec.initContainers[*].name}'
 echo
 ```
 
