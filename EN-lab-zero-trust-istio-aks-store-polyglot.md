@@ -437,7 +437,7 @@ kubectl patch deployment product-service -n $APP_NS \
 kubectl patch deployment order-service -n $APP_NS \
   -p '{"spec":{"template":{"spec":{"serviceAccountName":"order-service-sa"}}}}'
 
-kubectl patch deployment rabbitmq -n $APP_NS \
+kubectl patch statefulset rabbitmq -n $APP_NS \
   -p '{"spec":{"template":{"spec":{"serviceAccountName":"rabbitmq-sa"}}}}'
 ```
 
