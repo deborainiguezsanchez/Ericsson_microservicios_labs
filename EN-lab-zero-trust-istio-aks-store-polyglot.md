@@ -453,7 +453,7 @@ Wait for all deployments:
 kubectl rollout status deployment/store-front -n $APP_NS
 kubectl rollout status deployment/product-service -n $APP_NS
 kubectl rollout status deployment/order-service -n $APP_NS
-kubectl rollout status deployment/rabbitmq -n $APP_NS
+kubectl rollout status statefulset/rabbitmq -n $APP_NS
 ```
 
 Validate pods:
