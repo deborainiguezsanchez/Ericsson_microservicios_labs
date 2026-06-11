@@ -262,14 +262,14 @@ kubectl get pods -n istio-system
 Validate ingress gateway:
 
 ```bash
-kubectl get svc istio-ingressgateway -n istio-system
+kubectl get svc istiod-asm-1-28 -n istio-system
 ```
 
 Get gateway IP:
 
 ```bash
 export GATEWAY_IP=$(kubectl get svc istio-ingressgateway \
-  -n istio-system \
+  -n aks-istio-system \
   -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
 echo $GATEWAY_IP
