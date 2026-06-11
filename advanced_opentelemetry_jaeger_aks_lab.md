@@ -268,8 +268,8 @@ kubectl get svc istiod-asm-1-28 -n istio-system
 Get gateway IP:
 
 ```bash
-export GATEWAY_IP=$(kubectl get svc istio-ingressgateway \
-  -n aks-istio-system \
+export GATEWAY_IP=$(kubectl get svc aks-istio-ingressgateway-external \
+  -n aks-istio-ingress \
   -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
 echo $GATEWAY_IP
