@@ -1,0 +1,394 @@
+````markdown
+# RabbitMQ Metrics Integration with Azure Managed Prometheus
+
+## Objective
+
+Expose RabbitMQ Prometheus metrics and make them available in:
+
+- Azure Managed Prometheus
+- Azure Managed Grafana
+
+---
+
+## Current Situation
+
+We already verified that RabbitMQ is exposing Prometheus metrics.
+
+Test:
+
+```bash
+curl http://20.37.131.226:15692/metrics | head
+```
+
+Example output:
+
+```text
+# HELP erlang_mnesia_held_locks Number of held locks.
+# TYPE erlang_mnesia_held_locks gauge
+erlang_mnesia_held_locks 0
+```
+
+This confirms:
+
+```text
+RabbitMQ Prometheus Plugin = Enabled
+Metrics Endpoint = Working
+```
+
+---
+
+## Important Concept
+
+Exposing metrics does NOT mean Prometheus is collecting them.
+
+Observability flow:
+
+```text
+RabbitMQ
+    |
+    | /metrics
+    v
+Azure Managed Prometheus
+    |
+    v
+Azure Monitor Workspace
+    |
+    v
+Azure Managed Grafana
+```
+
+Currently we have:
+
+```text
+RabbitMQ
+    |
+    v
+Metrics Endpoint
+```
+
+The next step is:
+
+```text
+Azure Managed Prometheus
+      |
+      v
+Scrape RabbitMQ
+```
+
+---
+
+# Step 1 - Verify Monitoring CRDs
+
+Check whether PodMonitor or ServiceMonitor CRDs exist.
+
+```bash
+kubectl get crd | grep monitoring.coreos.com
+```
+
+Expected:
+
+```text
+podmonitors.monitoring.coreos.com
+servicemonitors.monitoring.coreos.com
+```
+
+---
+
+# Step 2 - Verify RabbitMQ Labels
+
+```bash
+kubectl get pods -n $NS --show-labels | grep rabbitmq
+```
+
+Expected label:
+
+```text
+app=rabbitmq
+```
+
+---
+
+# Step 3 - Verify RabbitMQ Metrics Service
+
+Verify the service exposing metrics.
+
+```bash
+kubectl get svc rabbitmq-prometheus -n $NS
+```
+
+Detailed view:
+
+```bash
+kubectl describe svc rabbitmq-prometheus -n $NS
+```
+
+Verify:
+
+```text
+Port: 15692
+TargetPort: 15692
+```
+
+---
+
+# Step 4 - Create PodMonitor
+
+Create:
+
+```yaml
+cat <<EOF > rabbitmq-podmonitor.yaml
+apiVersion: azmonitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: rabbitmq
+  namespace: $NS
+spec:
+  selector:
+    matchLabels:
+      app: rabbitmq
+  podMetricsEndpoints:
+  - port: prometheus
+    path: /metrics
+    interval: 30s
+EOF
+```
+
+Apply:
+
+```bash
+kubectl apply -f rabbitmq-podmonitor.yaml
+```
+
+---
+
+# Step 5 - Validate PodMonitor
+
+```bash
+kubectl get podmonitor -n $NS
+```
+
+Expected:
+
+```text
+rabbitmq
+```
+
+Inspect:
+
+```bash
+kubectl describe podmonitor rabbitmq -n $NS
+```
+
+---
+
+# Step 6 - Wait for Discovery
+
+Azure Managed Prometheus typically requires:
+
+```text
+2–5 minutes
+```
+
+to discover the new scrape target.
+
+---
+
+# Step 7 - Open Grafana Explore
+
+Open:
+
+```text
+Azure Managed Grafana
+  → Explore
+```
+
+Test:
+
+```promql
+up
+```
+
+Look for:
+
+```text
+job="rabbitmq"
+```
+
+---
+
+# Step 8 - Query RabbitMQ Metrics
+
+Try:
+
+```promql
+rabbitmq_connections
+```
+
+---
+
+```promql
+rabbitmq_channels
+```
+
+---
+
+```promql
+rabbitmq_queue_messages
+```
+
+---
+
+```promql
+rabbitmq_queue_messages_ready
+```
+
+---
+
+```promql
+rabbitmq_queue_consumers
+```
+
+---
+
+```promql
+rabbitmq_queue_messages_unacked
+```
+
+---
+
+# Step 9 - Build a RabbitMQ Dashboard
+
+Recommended panels:
+
+| Panel | Query |
+|---------|---------|
+| Connections | rabbitmq_connections |
+| Channels | rabbitmq_channels |
+| Messages Ready | rabbitmq_queue_messages_ready |
+| Messages Unacked | rabbitmq_queue_messages_unacked |
+| Consumers | rabbitmq_queue_consumers |
+| Total Queue Depth | rabbitmq_queue_messages |
+
+Dashboard name:
+
+```text
+RabbitMQ Operations Dashboard
+```
+
+---
+
+# Troubleshooting
+
+## No Data in Grafana
+
+Check:
+
+```bash
+kubectl get podmonitor -n $NS
+```
+
+---
+
+Verify endpoint manually:
+
+```bash
+curl http://20.37.131.226:15692/metrics
+```
+
+---
+
+Verify Azure Monitor agents:
+
+```bash
+kubectl get pods -n kube-system | grep ama
+```
+
+Expected:
+
+```text
+ama-metrics
+ama-metrics-node
+ama-metrics-ksm
+```
+
+---
+
+## Verify RabbitMQ Metrics Exist
+
+Try:
+
+```bash
+curl http://20.37.131.226:15692/metrics | grep rabbitmq
+```
+
+Expected:
+
+```text
+rabbitmq_connections
+rabbitmq_channels
+rabbitmq_queue_messages
+```
+
+---
+
+# Production Discussion
+
+Should we monitor RabbitMQ?
+
+Absolutely.
+
+RabbitMQ often becomes the hidden bottleneck in microservice architectures.
+
+Examples:
+
+- Consumers stop processing.
+- Queue backlog grows.
+- Messages remain unacknowledged.
+- Publishers continue producing messages.
+- End users experience delays.
+
+Without queue metrics:
+
+```text
+The application appears healthy.
+```
+
+With queue metrics:
+
+```text
+The application is technically up,
+but business processing is falling behind.
+```
+
+---
+
+# Key Takeaway
+
+Observability requires four layers:
+
+```text
+Application
+      ↓
+Metrics Endpoint
+      ↓
+Prometheus Scraping
+      ↓
+Grafana Visualization
+```
+
+Today we confirmed:
+
+```text
+RabbitMQ Metrics Endpoint = Working
+```
+
+The goal is to make:
+
+```text
+Azure Managed Prometheus
+        ↓
+Azure Managed Grafana
+```
+
+consume and visualize those metrics automatically.
+````
