@@ -269,7 +269,7 @@ Get gateway IP:
 
 ```bash
 export GATEWAY_IP=$(kubectl get svc istio-ingressgateway \
-  -n istio-system \
+  -n aks-istio-system \
   -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
 echo $GATEWAY_IP
