@@ -256,7 +256,9 @@ export APP_NS="aks-store-state-lab"
 Validate Istio system pods:
 
 ```bash
-kubectl get pods -n istio-system
+kubectl get pods -n aks-istio-system
+kubectl get pods -n aks-istio-ingress
+
 ```
 
 Validate ingress gateway:
